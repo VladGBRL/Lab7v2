@@ -6,68 +6,74 @@
 #include <queue>
 #include <condition_variable>
 
+// Shared variables
 std::mutex mtx;
 std::condition_variable cv;
-int current_type = -1;             // Tipul curent (-1: niciun tip, 0: alb, 1: negru)
-int active_processes = 0;    // Numărul de procese albe active
-   // Numărul de procese negre active
-std::queue<int> request_queue;     // Coada cererilor
+int current_type = -1;          // Current type (-1: none, 0: white, 1: black)
+int active_processes = 0;       // Number of active processes of the current type
+std::queue<int> request_queue;  // Request queue
 
+// Access the shared resource
 void accessResource(pid_t pid, int type) {
     std::unique_lock<std::mutex> lock(mtx);
 
-    // Adaugă cererea în coadă
+    // Add the request to the queue
     request_queue.push(type);
 
-    // Așteaptă până când resursa devine disponibilă pentru acest tip
+    // Wait until the resource is available for this type
     cv.wait(lock, [&] {
-        return (request_queue.front() == type && (current_type == type || current_type == -1));
+        return (request_queue.front() == type &&
+            (current_type == type || current_type == -1));
         });
 
-    // Procesul de același tip poate accesa resursa
+    // Process of the same type can access the resource
     current_type = type;
     active_processes++;
     request_queue.pop();
 
-    // Acces la resursă
-    std::cout << "PID " << pid << " (tip " << (type == 0 ? "alb" : "negru")
-        << ") accesează resursa.\n";
+    // Access the resource
+    std::cout << "PID " << pid << " (type " << (type == 0 ? "white" : "black")
+        << ") is accessing the resource.\n";
 
     lock.unlock();
-    sleep(1); // Simulează timpul de utilizare a resursei
+    sleep(1);  // Simulate resource usage time
     lock.lock();
 
-    std::cout << "PID " << pid << " (tip " << (type == 0 ? "alb" : "negru")
-        << ") eliberează resursa.\n";
+    std::cout << "PID " << pid << " (type " << (type == 0 ? "white" : "black")
+        << ") is releasing the resource.\n";
 
     active_processes--;
 
-    // Dacă nu mai sunt procese active de același tip, permite accesul altui tip
+    // If no more processes of the same type are active, allow other types
     if (active_processes == 0) {
-        current_type = -1; // Resursa devine disponibilă pentru alt tip
-        
+        current_type = -1;  // Resource becomes available for another type
     }
 
-        cv.notify_all();
+    cv.notify_all();
 }
 
+// Create child process
 void createChildProcess(int type) {
     pid_t pid = fork();
 
-    
-        
+    if (pid == 0) {  // Child process
         accessResource(getpid(), type);
-   
+        _exit(0);  // Terminate the child process
+    }
+    else if (pid < 0) {
+        std::cerr << "Failed to fork process\n";
+    }
 }
 
 int main() {
     const int num_processes = 10;
 
+    // Create child processes
     for (int i = 0; i < num_processes; ++i) {
-        createChildProcess(i % 2); // Procesele sunt alternate între alb și negru
+        createChildProcess(i % 2);  // Alternate between white (0) and black (1)
     }
 
-    // Așteaptă finalizarea tuturor proceselor copil
+    // Wait for all child processes to complete
     for (int i = 0; i < num_processes; ++i) {
         wait(nullptr);
     }
