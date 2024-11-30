@@ -59,7 +59,7 @@ int main() {
         
         createChildProcess(pid,i % 2); 
     }
-    =
+    
     for (int i = 0; i < num_processes; ++i) {
         wait(nullptr);
     }
