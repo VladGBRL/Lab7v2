@@ -54,11 +54,14 @@ void createChildProcess(int pid, int type) {
 
 int main() {
     const int num_processes = 10;
-    pid_t pid = fork();
     for (int i = 0; i < num_processes; ++i) {
-        
-        createChildProcess(pid,i % 2); 
+        pid_t pid = fork();
+        if (pid == 0) {
+            createChildProcess(getpid(), i % 2);
+            exit(0); // Procesul copil se termină după ce accesează resursa.
+        }
     }
+
     
     for (int i = 0; i < num_processes; ++i) {
         wait(nullptr);
