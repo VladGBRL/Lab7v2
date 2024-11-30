@@ -51,7 +51,7 @@ void accessResource(pid_t pid, int type) {
         cv.notify_all();
 }
 
-void createChildProcess(int type) {
+void createChildProcess(int pid, int type) {
 
         
         accessResource(getpid(), type);
@@ -60,10 +60,10 @@ void createChildProcess(int type) {
 
 int main() {
     const int num_processes = 10;
-
+    pid_t pid = fork();
     for (int i = 0; i < num_processes; ++i) {
-        //pid_t pid = fork();
-        createChildProcess(i % 2); // Procesele sunt alternate între alb și negru
+        
+        createChildProcess(pid,i % 2); // Procesele sunt alternate între alb și negru
     }
 
     // Așteaptă finalizarea tuturor proceselor copil
