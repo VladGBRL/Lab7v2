@@ -62,7 +62,7 @@ int main() {
     const int num_processes = 10;
 
     for (int i = 0; i < num_processes; ++i) {
-        pid_t pid = fork();
+        //pid_t pid = fork();
         createChildProcess(i % 2); // Procesele sunt alternate între alb și negru
     }
 
