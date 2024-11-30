@@ -29,7 +29,7 @@ void accessResource(pid_t pid, int type) {
         << ") accesează resursa.\n";
 
     lock.unlock();
-    sleep(1);i
+    sleep(1);
     lock.lock();
 
     std::cout << "PID " << pid << " (tip " << (type == 0 ? "alb" : "negru")
