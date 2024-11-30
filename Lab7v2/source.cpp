@@ -9,7 +9,6 @@
 std::mutex mtx;
 std::condition_variable cv;
 int current_type = -1;             // Tipul curent (-1: niciun tip, 0: alb, 1: negru)
-int active_processes = 0;          // Numărul de procese active
 int active_white_processes = 0;    // Numărul de procese albe active
 int active_black_processes = 0;    // Numărul de procese negre active
 std::queue<int> request_queue;     // Coada cererilor
@@ -32,7 +31,6 @@ void accessResource(pid_t pid, int type) {
 
     // Procesul de același tip poate accesa resursa
     current_type = type;
-    active_processes++;
     if (type == 0) {
         active_white_processes++;
     }
@@ -52,7 +50,6 @@ void accessResource(pid_t pid, int type) {
     std::cout << "PID " << pid << " (tip " << (type == 0 ? "alb" : "negru")
         << ") eliberează resursa.\n";
 
-    active_processes--;
     if (type == 0) {
         active_white_processes--;
     }
@@ -60,12 +57,15 @@ void accessResource(pid_t pid, int type) {
         active_black_processes--;
     }
 
-    // Dacă nu mai sunt procese active de același tip, resursa devine disponibilă pentru alt tip
+    // Dacă nu mai sunt procese active de același tip, permite accesul altui tip
     if (active_white_processes == 0 && active_black_processes == 0) {
-        current_type = -1;
+        current_type = -1; // Resursa devine disponibilă pentru alt tip
+        cv.notify_all();
     }
-
-    cv.notify_all();
+    else {
+        // Continuă să permită accesul firelor de același tip
+        cv.notify_all();
+    }
 }
 
 void createChildProcess(int type) {
