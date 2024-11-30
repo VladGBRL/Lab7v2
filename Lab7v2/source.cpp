@@ -4,32 +4,30 @@
 #include <sys/wait.h>
 #include <mutex>
 #include <queue>
-#include <map>
 #include <condition_variable>
 
 std::mutex mtx;
 std::condition_variable cv;
-int current_type = -1;             // Tipul curent (0 pentru alb, 1 pentru negru)
+int current_type = -1;             // Tipul curent (-1: niciun tip, 0: alb, 1: negru)
 int active_processes = 0;          // Numărul de procese active
 int active_white_processes = 0;    // Numărul de procese albe active
 int active_black_processes = 0;    // Numărul de procese negre active
 std::queue<int> request_queue;     // Coada cererilor
-std::map<int, int> wait_counts;    // Număr de cereri pentru fiecare tip
 
 void accessResource(pid_t pid, int type) {
     std::unique_lock<std::mutex> lock(mtx);
 
-    // Adaugă cererea în coadă și crește contorul pentru tipul respectiv
+    // Adaugă cererea în coadă
     request_queue.push(type);
-    wait_counts[type]++;
 
     // Așteaptă până când resursa devine disponibilă pentru acest tip
     cv.wait(lock, [&] {
-        // Resursa este disponibilă doar pentru firele de același tip
+        // Condiție de acces: doar firele de același tip pot accesa simultan
         bool same_type_access = (current_type == -1 || current_type == type);
-        bool no_conflict = (active_white_processes == 0 || type == 1) && (active_black_processes == 0 || type == 0);
-        // Asigură că resursa nu este accesată simultan de alb și negru
-        return (!request_queue.empty() && request_queue.front() == type) && same_type_access && no_conflict;
+        bool no_conflict = (active_white_processes == 0 || type == 1) &&
+            (active_black_processes == 0 || type == 0);
+        bool is_turn = !request_queue.empty() && request_queue.front() == type;
+        return same_type_access && no_conflict && is_turn;
         });
 
     // Procesul de același tip poate accesa resursa
@@ -42,7 +40,6 @@ void accessResource(pid_t pid, int type) {
         active_black_processes++;
     }
     request_queue.pop();
-    wait_counts[type]--;
 
     // Acces la resursă
     std::cout << "PID " << pid << " (tip " << (type == 0 ? "alb" : "negru")
@@ -54,8 +51,8 @@ void accessResource(pid_t pid, int type) {
 
     std::cout << "PID " << pid << " (tip " << (type == 0 ? "alb" : "negru")
         << ") eliberează resursa.\n";
-    active_processes--;
 
+    active_processes--;
     if (type == 0) {
         active_white_processes--;
     }
@@ -63,15 +60,13 @@ void accessResource(pid_t pid, int type) {
         active_black_processes--;
     }
 
-    // Dacă nu mai sunt procese de același tip, resursa devine disponibilă pentru alt tip
+    // Dacă nu mai sunt procese active de același tip, resursa devine disponibilă pentru alt tip
     if (active_white_processes == 0 && active_black_processes == 0) {
         current_type = -1;
     }
 
-    // Eliberează resursa înainte de a permite altui tip de fir să acceseze
     cv.notify_all();
 }
-
 
 void createChildProcess(int type) {
     pid_t pid = fork();
@@ -100,4 +95,3 @@ int main() {
 
     return 0;
 }
- 
