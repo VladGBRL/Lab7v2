@@ -25,10 +25,10 @@ void accessResource(pid_t pid, int type) {
 
     // Așteaptă până când resursa devine disponibilă pentru acest tip
     cv.wait(lock, [&] {
-        // Condiția de acces: Un proces alb nu poate accesa resursa
-        // dacă există procese negre care o folosesc și invers.
+        // Resursa este disponibilă doar pentru firele de același tip
         bool same_type_access = (current_type == -1 || current_type == type);
         bool no_conflict = (active_white_processes == 0 || type == 1) && (active_black_processes == 0 || type == 0);
+        // Asigură că resursa nu este accesată simultan de alb și negru
         return (!request_queue.empty() && request_queue.front() == type) && same_type_access && no_conflict;
         });
 
@@ -72,6 +72,7 @@ void accessResource(pid_t pid, int type) {
     cv.notify_all();
 }
 
+
 void createChildProcess(int type) {
     pid_t pid = fork();
 
@@ -99,3 +100,4 @@ int main() {
 
     return 0;
 }
+ 
