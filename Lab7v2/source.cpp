@@ -54,14 +54,10 @@ void accessResource(pid_t pid, int type) {
 void createChildProcess(int type) {
     pid_t pid = fork();
 
-    if (pid == 0) {
-        // Cod pentru procesul copil
+    
+        
         accessResource(getpid(), type);
-        exit(0); // Termină procesul copil
-    }
-    else if (pid < 0) {
-        std::cerr << "Eroare la crearea procesului.\n";
-    }
+   
 }
 
 int main() {
