@@ -52,30 +52,34 @@ void accessResource(pid_t pid, int type) {
     cv.notify_all();
 }
 
-// Create child process
-void createChildProcess(int type) {
-    pid_t pid = fork();
-
-    if (pid == 0) {  // Child process
-        accessResource(getpid(), type);
-        _exit(0);  // Terminate the child process
-    }
-    else if (pid < 0) {
-        std::cerr << "Failed to fork process\n";
-    }
+// Simulate the behavior of processes in the parent process
+void simulateProcess(pid_t pid, int type) {
+    accessResource(pid, type);
 }
 
 int main() {
     const int num_processes = 10;
+    pid_t pids[num_processes];  // Store process IDs
 
-    // Create child processes
     for (int i = 0; i < num_processes; ++i) {
-        createChildProcess(i % 2);  // Alternate between white (0) and black (1)
+        pid_t pid = fork();
+
+        if (pid == 0) {  // Child process
+            simulateProcess(getpid(), i % 2);  // Alternate between white (0) and black
+            _exit(0);  // Terminate the child process after execution
+        }
+        else if (pid > 0) {  // Parent process
+            pids[i] = pid;  // Save the child's PID
+        }
+        else {
+            std::cerr << "Failed to fork process\n";
+            return 1;  // Exit if fork fails
+        }
     }
 
     // Wait for all child processes to complete
     for (int i = 0; i < num_processes; ++i) {
-        wait(nullptr);
+        waitpid(pids[i], nullptr, 0);
     }
 
     return 0;
