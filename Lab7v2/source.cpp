@@ -9,8 +9,8 @@
 std::mutex mtx;
 std::condition_variable cv;
 int current_type = -1;             // Tipul curent (-1: niciun tip, 0: alb, 1: negru)
-int active_white_processes = 0;    // Numărul de procese albe active
-int active_black_processes = 0;    // Numărul de procese negre active
+int active_processes = 0;    // Numărul de procese albe active
+   // Numărul de procese negre active
 std::queue<int> request_queue;     // Coada cererilor
 
 void accessResource(pid_t pid, int type) {
@@ -21,22 +21,12 @@ void accessResource(pid_t pid, int type) {
 
     // Așteaptă până când resursa devine disponibilă pentru acest tip
     cv.wait(lock, [&] {
-        // Condiție de acces: doar firele de același tip pot accesa simultan
-        bool same_type_access = (current_type == -1 || current_type == type);
-        bool no_conflict = (active_white_processes == 0 || type == 1) &&
-            (active_black_processes == 0 || type == 0);
-        bool is_turn = !request_queue.empty() && request_queue.front() == type;
-        return same_type_access && no_conflict && is_turn;
+        return (request_queue.front() == type && (current_type == type || current_type == -1));
         });
 
     // Procesul de același tip poate accesa resursa
     current_type = type;
-    if (type == 0) {
-        active_white_processes++;
-    }
-    else {
-        active_black_processes++;
-    }
+    active_processes++;
     request_queue.pop();
 
     // Acces la resursă
@@ -50,22 +40,15 @@ void accessResource(pid_t pid, int type) {
     std::cout << "PID " << pid << " (tip " << (type == 0 ? "alb" : "negru")
         << ") eliberează resursa.\n";
 
-    if (type == 0) {
-        active_white_processes--;
-    }
-    else {
-        active_black_processes--;
-    }
+    active_processes--;
 
     // Dacă nu mai sunt procese active de același tip, permite accesul altui tip
-    if (active_white_processes == 0 && active_black_processes == 0) {
+    if (active_processes == 0) {
         current_type = -1; // Resursa devine disponibilă pentru alt tip
-        cv.notify_all();
+        
     }
-    else {
-        // Continuă să permită accesul firelor de același tip
+
         cv.notify_all();
-    }
 }
 
 void createChildProcess(int type) {
